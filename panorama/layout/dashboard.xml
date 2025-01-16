@@ -377,6 +377,9 @@
 							<Button id="GuidedOwlGameButton" class="gameButton" onactivate="selectGuidedOwlGame()">
 								<Label id="GuidedOwlGameLabel" class="gameButtonLabel" text="Guided Owl" />
 							</Button>
+							<Button id="BombSweeperGameButton" class="gameButton" onactivate="selectBombSweeperGame()">
+								<Label id="BombSweeperGameLabel" class="gameButtonLabel" text="Bomb Sweeper" />
+							</Button>
 							<Button id="StartArcadeGameButton" class="gameButton" onactivate="startGame()">
 								<Label id="StartArcadeGameLabel" class="gameButtonLabel" text="Start Game" />
 							</Button>

@@ -4,10 +4,10 @@ var gameOpen = false;
 
 class GameObject {
 
-    constructor(id, name, properties) {
+    constructor(id, name, properties, type="Panel") {
         this.id = id;
         this.name = name;
-        this.panel = $.CreatePanel("Panel", myCanvas, `CanvasObject_${id}`);
+        this.panel = $.CreatePanel(type, myCanvas, `CanvasObject_${id}`);
 
         this.position = {x: 0, y: 0};
 
@@ -57,6 +57,17 @@ class GameObject {
     }
 
     /**
+     * Runs a callback on click
+     * 
+     * @param {() => {}} callback The function to run when this object is clicked.
+     */
+    OnClick(callback) {
+        this.panel.SetPanelEvent("onactivate", () => {
+            callback();
+        })
+    }
+
+    /**
      * Destroys the Game Object
      */
     Destroy() {
@@ -99,8 +110,8 @@ class ArcadeEngine {
      * ```
      * @returns 
      */
-    static createGameObject(name, properties) {
-        let go = new GameObject(this.gameObjectsCounter, name, properties);
+    static createGameObject(name, properties, type="Panel") {
+        let go = new GameObject(this.gameObjectsCounter, name, properties, type);
         // finally, update game objects counter
         this.gameObjectsCounter++;
         this.gameObjects.push(go);
@@ -756,6 +767,192 @@ class GuidedOwlGame {
     }
 }
 
+class BombSweeper {
+
+    static Instance = null;
+    
+    constructor() {
+        if (BombSweeper.Instance) {
+            return;
+        }
+
+        BombSweeper.Instance = this;
+    }
+
+    resetGame() {
+        this.r = 9;
+        this.c = 9;
+
+        this.bombCount = 9;
+
+        this.grid = this.generateGrid();
+
+        // set up cell numbers
+        for (let i = 0; i < this.r; i++) {
+            for (let j = 0; j < this.c; j++) {
+                this.setCellNumber(i, j);
+            }
+        }
+
+        ArcadeEngine.Play();
+    }
+
+    generateGrid() {
+        let grid = [];
+
+        let r = 9;
+        let c = 9;
+
+        let bombCount = 9;
+
+        for (let i = 0; i < r; i++) {
+            grid.push([]);
+            for (let j = 0; j < c; j++) {
+                grid[i][j] = ArcadeEngine.createGameObject(`GridSquare_${j}_${i}`, {
+                    width: "32px",
+                    height: "32px",
+                    margin: "8px",
+                    backgroundColor: "#777777"
+                });
+                grid[i][j].containsBomb = false;
+                grid[i][j].hasFlag = false;
+                grid[i][j].revealed = false;
+
+                grid[i][j].Move(j * 40, i * 40);
+                grid[i][j].Update();
+
+                grid[i][j].OnClick(() => {
+                    if (BombSweeper.Instance.grid[i][j].revealed) return;
+                    if (BombSweeper.Instance.grid[i][j].containsBomb) {
+                        $.Msg(`${BombSweeper.Instance.grid[i][j].name} was clicked! It had a bomb!`);
+                        BombSweeper.Instance.revealCell(i, j);
+                        $.Msg("Game over! You hit a bomb!");
+                        ArcadeEngine.gameActive = false;
+                    } else {
+                        $.Msg(`${BombSweeper.Instance.grid[i][j].name} was clicked! It did not have a bomb!`);
+                        BombSweeper.Instance.revealCell(i, j);
+                    }
+                })
+            }
+        }
+
+        let b = 0;
+        let tryCount = 0;
+        while (b < bombCount) {
+            if (tryCount > 1000) break;
+
+            let i = Math.floor(Math.random() * r);
+            let j = Math.floor(Math.random() * c);
+
+            let cell = grid[i][j];
+            if (!cell.containsBomb) {
+                b++;
+                cell.containsBomb = true;
+            } else {
+                // retry bomb placement
+            }
+            tryCount++;
+        }
+
+        return grid;
+    }
+
+    revealCell(r, c) {
+        //$.Msg("Ran!"); // for checking maximum stack size
+        if (!this.isCellInBounds(r, c)) return;
+        if (this.grid[r][c].number == null) return;
+        if (this.grid[r][c].revealed == true) return;
+
+        this.grid[r][c].revealed = true;
+        this.grid[r][c].panel.style["backgroundColor"] = "#999999";
+
+        if (this.grid[r][c].number > 0) {
+            // create label for the number
+            let n = ArcadeEngine.createGameObject(`GridSquare_${r}_${c}_Number`, {
+                width: "32px",
+                height: "32px",
+                margin: "8px",
+                fontSize: "24px",
+                textAlign: "center",
+                color: this.getNumberColor(this.grid[r][c].number),
+            }, "Label");
+
+            n.Move(c * 40, r * 40);
+            n.Update();
+
+            n.panel.text = `${this.grid[r][c].number}`;
+            // don't reveal squares next to numbered cells
+            return;
+        }
+
+        // go through each cell surrounding the cell
+        for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+                if (i == 0 && j == 0) continue;
+                this.revealCell(r+i, c+j);
+            }
+        }
+    }
+
+    /**
+     * Sets the number of bombs near the cell.
+     * 
+     * @param {*} r 
+     * @param {*} c 
+     */
+    setCellNumber(r, c) {
+        if (!this.isCellInBounds(r, c)) return;
+        if (this.grid[r][c].containsBomb) return;
+
+        let num = 0;
+
+        // go through each cell surrounding the cell
+        for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+                if (i == 0 && j == 0) continue;
+                let ni = r + i;
+                let nj = c + j;
+
+                if (this.isCellInBounds(ni, nj) && this.grid[ni][nj].containsBomb) {
+                    num++;
+                }
+            }
+        }
+
+        this.grid[r][c].number = num;
+    }
+
+    /* Gets the color attributed to each number. */
+    getNumberColor(number) {
+        switch (number) {
+            case 1:
+                return "#0000FF"; // Blue
+            case 2:
+                return "#008000"; // Green
+            case 3:
+                return "#FF0000"; // Red
+            case 4:
+                return "#000080"; // Dark Blue
+            case 5:
+                return "#800000"; // Brown
+            case 6:
+                return "#008080"; // Teal
+            case 7:
+                return "#000000"; // Black
+            case 8:
+                return "#808080"; // Gray
+            default:
+                return "#000000"; // Default color (black) for invalid or no number
+        }
+    }
+    
+
+    isCellInBounds(r, c) {
+        return (r >= 0 && r < this.r && c >= 0 && c < this.c);
+    }
+
+}
+
 // init to 0 clicks
 var counter = 0;
 // init to false
@@ -807,6 +1004,7 @@ var game = null;
 new SnakeGame();
 new PongGame();
 new GuidedOwlGame();
+new BombSweeper();
 
 function selectViperGame() {
     if (game == SnakeGame.Instance) return;
@@ -830,6 +1028,14 @@ function selectGuidedOwlGame() {
 
     game = GuidedOwlGame.Instance;
     $.Msg("Selected Guided Owl!");
+}
+
+function selectBombSweeperGame() {
+    if (game == BombSweeper.Instance) return;
+    ArcadeEngine.Clear();
+
+    game = BombSweeper.Instance;
+    $.Msg("Selected Bomb Sweeper!");
 }
 
 function startGame() {
