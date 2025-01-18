@@ -794,6 +794,15 @@ class BombSweeper {
             }
         }
 
+        let gui = ArcadeEngine.createGameObject(`RightUI`, {
+            width: "272px",
+            height: "368px",
+            margin: "8px",
+            backgroundColor: "#777777"
+        })
+
+        gui.Move(40*9, 0);
+
         ArcadeEngine.Play();
     }
 
@@ -826,13 +835,14 @@ class BombSweeper {
                     if (BombSweeper.Instance.grid[i][j].containsBomb) {
                         $.Msg(`${BombSweeper.Instance.grid[i][j].name} was clicked! It had a bomb!`);
                         BombSweeper.Instance.revealCell(i, j);
-                        $.Msg("Game over! You hit a bomb!");
-                        ArcadeEngine.gameActive = false;
+                        BombSweeper.Instance.gameOver();
                     } else {
                         $.Msg(`${BombSweeper.Instance.grid[i][j].name} was clicked! It did not have a bomb!`);
                         BombSweeper.Instance.revealCell(i, j);
                     }
                 })
+
+                // need a way to flag a square
             }
         }
 
@@ -951,6 +961,15 @@ class BombSweeper {
         return (r >= 0 && r < this.r && c >= 0 && c < this.c);
     }
 
+    gameOver() {
+        $.Msg("Game over! You hit a bomb!");
+        ArcadeEngine.gameActive = false;
+
+        // have some text show up that the game is over
+        // play some explosion sound effect
+        // show up all bombs on the map
+    }
+
 }
 
 // init to 0 clicks
@@ -1006,12 +1025,12 @@ new PongGame();
 new GuidedOwlGame();
 new BombSweeper();
 
-function selectViperGame() {
+function selectVyperGame() {
     if (game == SnakeGame.Instance) return;
     ArcadeEngine.Clear();
 
     game = SnakeGame.Instance;
-    $.Msg("Selected Viper!");
+    $.Msg("Selected Vyper!");
 }
 
 function selectPongGame() {
@@ -1074,7 +1093,7 @@ Ideas/TODO:
     - Maybe some CRT shader for the "canvas" (if it is possible)
 - Make some basic games.
     X Pong  (Lash?)
-    X Snake (Viper)
+    X Snake (Vyper)
     X Flappy Bird (Grey Talon Flappy Owl)
     - 2048 (medium)
     - Breakout (easy)
