@@ -662,10 +662,6 @@ class GuidedOwlGame {
             }
         })
 
-        ArcadeEngine.onKeyPress("key_Escape", (key) => {
-            this.gameOver();
-        })
-
         ArcadeEngine.Play();
 
         this.spawnInterval = 2;
